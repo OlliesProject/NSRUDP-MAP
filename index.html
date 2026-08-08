@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NSUDP — Nauru Water Supply GIS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+  #map { height: 100%; }
+  #panel {
+    position: absolute; top: 10px; left: 10px; z-index: 2;
+    background: rgba(255,255,255,.95); border-radius: 8px; padding: 10px 14px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 13px; max-height: 85vh; overflow-y: auto;
+  }
+  #panel h1 { font-size: 14px; margin: 0 0 6px; }
+  #panel label { display: block; margin: 3px 0; cursor: pointer; white-space: nowrap; }
+  #panel .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  #panel hr { border: none; border-top: 1px solid #ddd; margin: 8px 0; }
+  #panel select { width: 100%; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="panel">
+  <h1>NSUDP — Nauru Water Supply</h1>
+  <div id="layers"></div>
+  <hr>
+  <label>Basemap
+    <select id="basemap">
+      <option value="imagery">Esri World Imagery</option>
+      <option value="osm">OpenStreetMap</option>
+      <option value="none">None (white)</option>
+    </select>
+  </label>
+</div>
+<script>
+const protocol = new pmtiles.Protocol();
+maplibregl.addProtocol("pmtiles", protocol.tile);
+
+// [id, label, color, defaultVisible]
+const GROUPS = [
+  ["contours",   "Contours (1 m)",      "#c8b273", true],
+  ["cadastral",  "Cadastral parcels",   "#9e9e9e", true],
+  ["districts",  "Districts",           "#616161", true],
+  ["railway",    "Railway",             "#8B4513", true],
+  ["fuel_lines", "Fuel lines",          "#ff8c00", true],
+  ["future_fuel","Future fuel lines",   "#d4af37", false],
+  ["old_pipes",  "Old pipe system",     "#8e24aa", true],
+  ["retic",      "Reticulation design", "#1565c0", true],
+  ["ro_intake",  "RO intake",           "#2e7d32", true],
+  ["fittings",   "Fittings / valves",   "#111111", true],
+  ["key_stage1", "Key plan — Stage 1",  "#e53935", false],
+  ["key_stage2", "Key plan — Stage 2",  "#fb8c00", false],
+  ["key_stage3", "Key plan — Stage 3",  "#43a047", false],
+];
+
+const basemaps = {
+  imagery: {
+    tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+    attribution: "Imagery © Esri, Maxar, Earthstar Geographics"
+  },
+  osm: {
+    tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+    attribution: "© OpenStreetMap contributors"
+  }
+};
+
+const map = new maplibregl.Map({
+  container: "map",
+  center: [166.932, -0.527],
+  zoom: 13,
+  maxZoom: 19,
+  style: {
+    version: 8,
+    sources: {
+      basemap: { type: "raster", tiles: basemaps.imagery.tiles, tileSize: 256, attribution: basemaps.imagery.attribution },
+      nsudp: { type: "vector", url: "pmtiles://nsudp.pmtiles" }
+    },
+    layers: [
+      { id: "bg", type: "background", paint: { "background-color": "#ffffff" } },
+      { id: "basemap", type: "raster", source: "basemap" }
+    ]
+  }
+});
+map.addControl(new maplibregl.NavigationControl());
+map.addControl(new maplibregl.ScaleControl({ unit: "metric" }));
+
+const subLayers = {};  // group id -> [maplibre layer ids]
+
+map.on("load", () => {
+  for (const [id, label, color, vis] of GROUPS) {
+    const ids = [];
+    const visibility = vis ? "visible" : "none";
+    const lineWidth = id === "contours" ? 0.5 : id === "cadastral" ? 0.7 :
+                      (id === "districts" || id === "railway") ? 2 : 2.2;
+    const opacity = id === "contours" ? 0.55 : id === "cadastral" ? 0.6 : 0.95;
+    map.addLayer({
+      id: id + "-line", type: "line", source: "nsudp", "source-layer": id,
+      filter: ["!=", ["geometry-type"], "Point"],
+      layout: { visibility },
+      paint: { "line-color": color, "line-width": lineWidth, "line-opacity": opacity }
+    });
+    ids.push(id + "-line");
+    map.addLayer({
+      id: id + "-pt", type: "circle", source: "nsudp", "source-layer": id,
+      filter: ["==", ["geometry-type"], "Point"],
+      layout: { visibility },
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4.5],
+        "circle-color": id === "retic" ? "#d32f2f" : color,
+        "circle-opacity": 0.9
+      }
+    });
+    ids.push(id + "-pt");
+    subLayers[id] = ids;
+  }
+
+  // layer toggle panel
+  const holder = document.getElementById("layers");
+  for (const [id, label, color, vis] of GROUPS) {
+    const l = document.createElement("label");
+    l.innerHTML = `<input type="checkbox" ${vis ? "checked" : ""} data-id="${id}">
+      <span class="swatch" style="background:${color}"></span>${label}`;
+    l.querySelector("input").addEventListener("change", e => {
+      const v = e.target.checked ? "visible" : "none";
+      for (const lid of subLayers[id]) map.setLayoutProperty(lid, "visibility", v);
+    });
+    holder.appendChild(l);
+  }
+
+  // popups
+  map.on("click", e => {
+    const fs = map.queryRenderedFeatures(e.point, { layers: Object.values(subLayers).flat() });
+    if (!fs.length) return;
+    const p = fs[0].properties;
+    const rows = Object.entries(p).filter(([k,v]) => v !== "" && v != null)
+      .map(([k,v]) => `<tr><td style="color:#777;padding-right:8px">${k}</td><td>${v}</td></tr>`).join("");
+    new maplibregl.Popup().setLngLat(e.lngLat)
+      .setHTML(`<b>${fs[0].sourceLayer}</b><table style="font-size:12px">${rows}</table>`).addTo(map);
+  });
+  map.on("mousemove", e => {
+    const fs = map.queryRenderedFeatures(e.point, { layers: Object.values(subLayers).flat() });
+    map.getCanvas().style.cursor = fs.length ? "pointer" : "";
+  });
+});
+
+// basemap switcher
+document.getElementById("basemap").addEventListener("change", e => {
+  const v = e.target.value;
+  if (v === "none") { map.setLayoutProperty("basemap", "visibility", "none"); return; }
+  map.setLayoutProperty("basemap", "visibility", "visible");
+  map.getSource("basemap").setTiles(basemaps[v].tiles);
+});
+</script>
+</body>
+</html>
