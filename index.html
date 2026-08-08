@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>NSUDP — Nauru Water Supply GIS</title>
+<title>NSRUDP — Nauru Water Supply GIS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -25,7 +25,7 @@
 <body>
 <div id="map"></div>
 <div id="panel">
-  <h1>NSUDP — Nauru Water Supply</h1>
+  <h1>NSRUDP — Nauru Water Supply</h1>
   <div id="layers"></div>
   <hr>
   <label>Basemap
@@ -35,6 +35,12 @@
       <option value="none">None (white)</option>
     </select>
   </label>
+  <hr>
+  <div style="font-size:11px;color:#666">
+    Design information only — not "as constructed".<br>Not for excavation or navigation.<br>
+    <a href="DATA-NOTICE.pdf" target="_blank">View data notice &amp; terms of use</a> ·
+    <a href="DATA-NOTICE.pdf" download="NSRUDP-Data-Notice.pdf">Download</a>
+  </div>
 </div>
 <script>
 const protocol = new pmtiles.Protocol();
