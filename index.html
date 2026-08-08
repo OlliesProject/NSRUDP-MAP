@@ -64,7 +64,7 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 
 // [id, label, color, defaultVisible]
 const GROUPS = [
-  ["contours",   "Contours (1 m)",      "#c8b273", true],
+  ["contours",   "Contours (1 m)",      "#c8b273", false],
   ["cadastral",  "Cadastral parcels",   "#9e9e9e", true],
   ["districts",  "Districts",           "#616161", true],
   ["railway",    "Railway",             "#8B4513", true],
@@ -204,7 +204,7 @@ const setPanel = open => {
 };
 document.getElementById("panel-close").addEventListener("click", () => setPanel(false));
 toggle.addEventListener("click", () => setPanel(true));
-if (window.innerWidth <= 640) setPanel(false);
+setPanel(false);
 
 // basemap switcher
 document.getElementById("basemap").addEventListener("change", e => {
