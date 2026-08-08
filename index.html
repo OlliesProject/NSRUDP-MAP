@@ -15,6 +15,21 @@
     background: rgba(255,255,255,.95); border-radius: 8px; padding: 10px 14px;
     box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 13px; max-height: 85vh; overflow-y: auto;
   }
+  #panel.closed { display: none; }
+  #panel-toggle {
+    position: absolute; top: 10px; left: 10px; z-index: 3;
+    background: #fff; border: none; border-radius: 8px; padding: 8px 12px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.3); font-size: 14px; cursor: pointer; display: none;
+  }
+  #panel-close {
+    float: right; border: none; background: none; font-size: 18px;
+    cursor: pointer; color: #666; padding: 0 0 0 10px; line-height: 1;
+  }
+  @media (max-width: 640px) {
+    #panel { top: 0; left: 0; border-radius: 0 0 8px 0; max-height: 70vh; max-width: 85vw; }
+    #panel h1 { font-size: 13px; }
+    .maplibregl-popup-content { max-width: 78vw !important; }
+  }
   #panel h1 { font-size: 14px; margin: 0 0 6px; }
   #panel label { display: block; margin: 3px 0; cursor: pointer; white-space: nowrap; }
   #panel .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
@@ -24,8 +39,9 @@
 </head>
 <body>
 <div id="map"></div>
+<button id="panel-toggle" title="Show layers">☰ Layers</button>
 <div id="panel">
-  <h1>NSRUDP — Nauru Water Supply</h1>
+  <h1><button id="panel-close" title="Hide panel">×</button>NSRUDP — Nauru Water Supply</h1>
   <div id="layers"></div>
   <hr>
   <label>Basemap
@@ -178,6 +194,17 @@ map.on("load", () => {
     map.getCanvas().style.cursor = fs.length ? "pointer" : "";
   });
 });
+
+// collapsible panel (starts closed on small screens)
+const panel = document.getElementById("panel");
+const toggle = document.getElementById("panel-toggle");
+const setPanel = open => {
+  panel.classList.toggle("closed", !open);
+  toggle.style.display = open ? "none" : "block";
+};
+document.getElementById("panel-close").addEventListener("click", () => setPanel(false));
+toggle.addEventListener("click", () => setPanel(true));
+if (window.innerWidth <= 640) setPanel(false);
 
 // basemap switcher
 document.getElementById("basemap").addEventListener("change", e => {
