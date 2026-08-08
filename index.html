@@ -131,15 +131,41 @@ map.on("load", () => {
     holder.appendChild(l);
   }
 
-  // popups
+  // identify: query all visible layers within a small radius of the click
+  const GROUP_LABEL = Object.fromEntries(GROUPS.map(g => [g[0], g[1]]));
+  const featureCard = f => {
+    const p = f.properties;
+    let title = p.type || GROUP_LABEL[f.sourceLayer] || f.sourceLayer;
+    let badges = "";
+    if (p.diameter) badges += `<span style="background:#1565c0;color:#fff;border-radius:3px;padding:1px 6px;font-size:11px;margin-left:6px">${p.diameter} mm</span>`;
+    if (p.status) badges += `<span style="background:${p.status==="Abandoned"?"#8e24aa":p.status==="Proposed"?"#d4af37":"#2e7d32"};color:#fff;border-radius:3px;padding:1px 6px;font-size:11px;margin-left:6px">${p.status}</span>`;
+    if (p.elevation_m != null) badges += `<span style="background:#795548;color:#fff;border-radius:3px;padding:1px 6px;font-size:11px;margin-left:6px">${p.elevation_m} m</span>`;
+    const detail = [];
+    if (p.stage) detail.push(`Stage ${p.stage}${p.route ? " — " + p.route : ""}`);
+    if (p.block) detail.push(`Block: ${p.block}`);
+    if (p.text) detail.push(p.text);
+    detail.push(`<span style="color:#999">CAD layer: ${p.cad_layer || "—"} · ${GROUP_LABEL[f.sourceLayer]}</span>`);
+    return `<div style="border-top:1px solid #eee;padding:6px 0">
+      <b>${title}</b>${badges}
+      <div style="font-size:12px;margin-top:2px">${detail.join("<br>")}</div></div>`;
+  };
   map.on("click", e => {
-    const fs = map.queryRenderedFeatures(e.point, { layers: Object.values(subLayers).flat() });
+    const R = 6; // px hit tolerance
+    const bbox = [[e.point.x - R, e.point.y - R], [e.point.x + R, e.point.y + R]];
+    const active = Object.values(subLayers).flat()
+      .filter(lid => map.getLayoutProperty(lid, "visibility") !== "none");
+    const fs = map.queryRenderedFeatures(bbox, { layers: active });
     if (!fs.length) return;
-    const p = fs[0].properties;
-    const rows = Object.entries(p).filter(([k,v]) => v !== "" && v != null)
-      .map(([k,v]) => `<tr><td style="color:#777;padding-right:8px">${k}</td><td>${v}</td></tr>`).join("");
-    new maplibregl.Popup().setLngLat(e.lngLat)
-      .setHTML(`<b>${fs[0].sourceLayer}</b><table style="font-size:12px">${rows}</table>`).addTo(map);
+    // dedupe (same feature can appear across tile boundaries)
+    const seen = new Set(); const uniq = [];
+    for (const f of fs) {
+      const key = f.sourceLayer + "|" + JSON.stringify(f.properties);
+      if (!seen.has(key)) { seen.add(key); uniq.push(f); }
+      if (uniq.length >= 10) break;
+    }
+    const header = `<div style="font-size:11px;color:#777;margin-bottom:2px">${uniq.length} feature${uniq.length > 1 ? "s" : ""} at this location</div>`;
+    new maplibregl.Popup({ maxWidth: "320px" }).setLngLat(e.lngLat)
+      .setHTML(`<div style="max-height:260px;overflow-y:auto">${header}${uniq.map(featureCard).join("")}</div>`).addTo(map);
   });
   map.on("mousemove", e => {
     const fs = map.queryRenderedFeatures(e.point, { layers: Object.values(subLayers).flat() });
