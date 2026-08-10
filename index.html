@@ -64,7 +64,7 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 
 // [id, label, color, defaultVisible]
 const GROUPS = [
-  ["contours",   "Contours (1 m)",      "#c8b273", false],
+  ["contours",   "Contours (1 m)",      "#b4690e", false],
   ["cadastral",  "Cadastral parcels",   "#e0e0e0", true],
   ["districts",  "Districts",           "#616161", true],
   ["railway",    "Railway",             "#8B4513", true],
@@ -117,9 +117,13 @@ map.on("load", () => {
   for (const [id, label, color, vis] of GROUPS) {
     const ids = [];
     const visibility = vis ? "visible" : "none";
-    const lineWidth = id === "contours" ? 0.5 : id === "cadastral" ? 0.7 :
+    // contours: index contours (every 5 m) drawn heavier than intermediates
+    const isIndex = ["==", ["%", ["get", "elevation_m"], 5], 0];
+    const lineWidth = id === "contours" ? ["case", isIndex, 1.4, 0.6] :
+                      id === "cadastral" ? 0.7 :
                       (id === "districts" || id === "railway") ? 2 : 2.2;
-    const opacity = id === "contours" ? 0.55 : id === "cadastral" ? 0.85 : 0.95;
+    const opacity = id === "contours" ? ["case", isIndex, 0.95, 0.7] :
+                    id === "cadastral" ? 0.85 : 0.95;
     if (id !== "fittings") { // fittings: valve points only, hide construction polylines
       map.addLayer({
         id: id + "-line", type: "line", source: "nsudp", "source-layer": id,
