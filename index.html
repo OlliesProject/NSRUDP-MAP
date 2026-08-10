@@ -120,13 +120,15 @@ map.on("load", () => {
     const lineWidth = id === "contours" ? 0.5 : id === "cadastral" ? 0.7 :
                       (id === "districts" || id === "railway") ? 2 : 2.2;
     const opacity = id === "contours" ? 0.55 : id === "cadastral" ? 0.6 : 0.95;
-    map.addLayer({
-      id: id + "-line", type: "line", source: "nsudp", "source-layer": id,
-      filter: ["!=", ["geometry-type"], "Point"],
-      layout: { visibility },
-      paint: { "line-color": color, "line-width": lineWidth, "line-opacity": opacity }
-    });
-    ids.push(id + "-line");
+    if (id !== "fittings") { // fittings: valve points only, hide construction polylines
+      map.addLayer({
+        id: id + "-line", type: "line", source: "nsudp", "source-layer": id,
+        filter: ["!=", ["geometry-type"], "Point"],
+        layout: { visibility },
+        paint: { "line-color": color, "line-width": lineWidth, "line-opacity": opacity }
+      });
+      ids.push(id + "-line");
+    }
     map.addLayer({
       id: id + "-pt", type: "circle", source: "nsudp", "source-layer": id,
       filter: ["==", ["geometry-type"], "Point"],
