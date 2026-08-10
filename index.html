@@ -72,6 +72,7 @@ const GROUPS = [
   ["future_fuel","Future fuel lines",   "#d4af37", false],
   ["old_pipes",  "Old pipe system",     "#8e24aa", true],
   ["retic",      "Reticulation design", "#1565c0", true],
+  ["customers",  "Customer points",     "#d32f2f", true],
   ["ro_intake",  "RO intake",           "#2e7d32", true],
   ["fittings",   "Fittings / valves",   "#111111", true],
   ["key_stage1", "Key plan — Stage 1",  "#e53935", false],
@@ -132,7 +133,7 @@ map.on("load", () => {
       layout: { visibility },
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4.5],
-        "circle-color": id === "retic" ? "#d32f2f" : color,
+        "circle-color": color,
         "circle-opacity": 0.9
       }
     });
